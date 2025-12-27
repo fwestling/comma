@@ -183,7 +183,7 @@ class stream(object):
         missing = np.zeros(1, dtype=self.missing_dtype)
         if self.default_values:
             dtype_name_of = dict(zip(self.missing_fields, self.missing_dtype.names))
-            for field, value in self.default_values.iteritems():
+            for field, value in self.default_values.items():
                 name = dtype_name_of[field]
                 if self.missing_dtype[name] == csv_time.DTYPE:
                     try: missing[name] = csv_time.to_numpy(value)
@@ -217,7 +217,8 @@ class stream(object):
             #unrolled_array = s.view( self.unrolled_write_dtype )
             if self.tied: lines = self._tie_ascii(self.tied._ascii_buffer, unrolled_array)
             else: lines = (self._toline(scalars) for scalars in unrolled_array)
-            for line in lines: print >> self.target, line
+            for line in lines:
+                print(line, file=self.target)
         self.target.flush()
 
     def _tie_binary(self, tied_array, array): return merge_arrays(tied_array, array)
@@ -238,7 +239,8 @@ class stream(object):
         if self.binary:
             self._input_array.tofile(self.target)
         else:
-            for line in self._ascii_buffer: print >> self.target, line
+            for line in self._ascii_buffer:
+                print(line, file=self.target)
         self.target.flush()
 
     def _dump_with_mask(self, mask):
@@ -256,8 +258,9 @@ class stream(object):
         if self.binary:
             self._input_array[mask].tofile(self.target)
         else:
-            for line, allowed in itertools.izip(self._ascii_buffer, mask):
-                if allowed: print >> self.target, line
+            for line, allowed in zip(self._ascii_buffer, mask):
+                if allowed:
+                    print(line, file=self.target)
         self.target.flush()
 
     def _warn(self, msg, verbose=True):
@@ -288,7 +291,7 @@ class stream(object):
         return tuple(xpath(name) or name for name in fields.split(','))
 
     def _format(self, binary, format):
-        if isinstance(binary, basestring):
+        if isinstance(binary, str):
             if self.verbose and binary and format and binary != format:
                 msg = "ignoring '{}' and using '{}' since binary keyword has priority" \
                     .format(format, binary)
@@ -360,10 +363,10 @@ class stream(object):
     def _missing_dtype(self):
         if not self.missing_fields: return
         n = len(self.input_dtype.names)
-        missing_names = ['f{}'.format(n + i) for i in xrange(len(self.missing_fields))]
+        missing_names = ['f{}'.format(n + i) for i in range(len(self.missing_fields))]
         type_of = self.struct.type_of_field.get
         missing_types = [type_of(name) for name in self.missing_fields]
-        return np.dtype(zip(missing_names, missing_types))
+        return np.dtype(list(zip(missing_names, missing_types)))
 
     def _complete_dtype(self):
         if self.missing_dtype: return np.dtype(self.input_dtype.descr + self.missing_dtype.descr)

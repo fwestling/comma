@@ -4,9 +4,9 @@
 - hosts: localhost
   connection: local
   vars:
-    - base: "{{ ansible_env.HOME }}"
-    - make_j: 6
-    - comma_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dcomma_BUILD_XML=ON -Dcomma_BUILD_ZEROMQ=ON -Dcomma_INSTALL_WEB_SHELL=OFF"
+    base: "{{ ansible_env.HOME }}"
+    make_j: 6
+    comma_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dcomma_BUILD_XML=ON -Dcomma_BUILD_ZEROMQ=ON -Dcomma_INSTALL_WEB_SHELL=OFF"
 
   tasks:
   - name: "install comma dependencies"
@@ -18,14 +18,13 @@
       - cmake-curses-gui
       - cmake
       - perl
-      - python
+      - python3
       - libboost-all-dev
       - socat
       - libzmq3-dev
       - libgtest-dev
-      - python-dev
-      - python-numpy
-      - libprocps-dev
+      - python3-dev
+      - python3-numpy
       - recode
       
   - name: "comma: make source directory at {{ base }}"
@@ -46,7 +45,7 @@
 
   - name: "comma: cmake"
     vars:
-        - comma_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dcomma_BUILD_XML=ON -Dcomma_BUILD_ZEROMQ=ON -Dcomma_INSTALL_WEB_SHELL=OFF"
+        comma_cmake_options: "-DBUILD_TESTS=ON -DINSTALL_TESTS=ON -DINSTALL_BASH_COMPLETION=ON -Dcomma_BUILD_XML=ON -Dcomma_BUILD_ZEROMQ=ON -Dcomma_INSTALL_WEB_SHELL=OFF"
     shell: "/usr/bin/cmake {{ comma_cmake_options }} {{ base }}/src/comma chdir={{ base }}/build/comma"
 
   - name: "comma: make"

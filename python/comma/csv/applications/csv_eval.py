@@ -254,7 +254,8 @@ def get_args():
         parser.print_help()
         parser.exit(0)
     if args.fields is None or args.fields == "": sys.exit( "csv-eval: please specify --fields" )
-    if args.init_values == '' and args.verbose: print >>sys.stderr, "csv-eval: --init currently reads one record at a time, which may be slow"
+    if args.init_values == '' and args.verbose:
+        print("csv-eval: --init currently reads one record at a time, which may be slow", file=sys.stderr)
     return args
 
 def ingest_deprecated_options(args):
@@ -334,7 +335,7 @@ def format_without_blanks(format, fields=[], unnamed_fields=True):
         if len(maybe_types) > len(fields):
             msg = "format '{}' is longer than fields '{}'".format(format, ','.join(fields))
             raise ValueError(msg)
-    maybe_typed_fields = itertools.izip_longest(maybe_types, fields)
+    maybe_typed_fields = itertools.zip_longest(maybe_types, fields)
     types = [comma_type(maybe_type, field) for maybe_type, field in maybe_typed_fields]
     return ','.join(types)
 
@@ -420,7 +421,7 @@ def prepare_options(args):
         args.format = comma.csv.format.guess_format(args.first_line)
         args.binary = False
         if args.verbose:
-            print >> sys.stderr, "{}: guessed format: {}".format(__name__, args.format)
+            print("{}: guessed format: {}".format(__name__, args.format), file=sys.stderr)
     if args.select or args.exit_if:
         return
     var_names = assignment_variable_names(args.expressions)
@@ -472,7 +473,7 @@ class stream(object):
         if self.args.verbose: self.print_info()
 
     def initialize_input(self):
-        self.nonblank_input_fields = filter(None, self.args.fields)
+        self.nonblank_input_fields = list(filter(None, self.args.fields))
         if not self.nonblank_input_fields: raise csv_eval_error("please specify input stream fields, e.g. --fields=x,y")
         check_fields(self.nonblank_input_fields)
         types = comma.csv.format.to_numpy(self.args.format)
@@ -497,20 +498,20 @@ class stream(object):
     def print_info(self, file=sys.stderr):
         fields = ','.join(self.input_t.nondefault_fields)
         format = self.input_t.format
-        print >> file, "expressions: '{}'".format(self.args.expressions)
-        print >> file, "select: '{}'".format(self.args.select)
-        print >> file, "exit_if: '{}'".format(self.args.exit_if)
-        print >> file, "default values: '{}'".format(self.args.default_values)
-        print >> file, "input fields: '{}'".format(fields)
-        print >> file, "input format: '{}'".format(format)
+        print("expressions: '{}'".format(self.args.expressions), file=file)
+        print("select: '{}'".format(self.args.select), file=file)
+        print("exit_if: '{}'".format(self.args.exit_if), file=file)
+        print("default values: '{}'".format(self.args.default_values), file=file)
+        print("input fields: '{}'".format(fields), file=file)
+        print("input format: '{}'".format(format), file=file)
         if self.args.select or self.args.exit_if:
             return
         update_fields = ','.join(self.update_t.fields) if self.args.update_fields else ''
         output_fields = ','.join(self.output_t.fields) if self.args.output_fields else ''
         output_format = self.output_t.format if self.args.output_fields else ''
-        print >> file, "update fields: '{}'".format(update_fields)
-        print >> file, "output fields: '{}'".format(output_fields)
-        print >> file, "output format: '{}'".format(output_format)
+        print("update fields: '{}'".format(update_fields), file=file)
+        print("output fields: '{}'".format(output_fields), file=file)
+        print("output format: '{}'".format(output_format), file=file)
 
 
 def check_fields(fields, allow_numpy_names=True):
@@ -554,52 +555,62 @@ def evaluate(stream):
     output = None
     input = None
     is_shutdown = comma.signal.is_shutdown()
-    if stream.args.first_line: input = stream.input.read_from_line(stream.args.first_line)
+    if stream.args.first_line:
+        input = stream.input.read_from_line(stream.args.first_line)
     while not is_shutdown:
         if input is not None:
             if size != input.size:
                 size = input.size
-                if stream.args.update_fields: update = stream.update_t(size)
-                if stream.args.output_fields: output = stream.output_t(size)
-                exec init_code in env, {'_input': input, '_update': update, '_output': output}
-            exec code in env, {'_input': input, '_update': update, '_output': output}
-            if stream.args.update_fields: update_buffer(stream.input, update)
-            if stream.args.output_fields: stream.output.write(output)
-            else: stream.input.dump()
-        input = stream.input.read( read_size )
-        if input is None: break
+                if stream.args.update_fields:
+                    update = stream.update_t(size)
+                if stream.args.output_fields:
+                    output = stream.output_t(size)
+                exec(init_code, env, {'_input': input, '_update': update, '_output': output})
+            exec(code, env, {'_input': input, '_update': update, '_output': output})
+            if stream.args.update_fields:
+                update_buffer(stream.input, update)
+            if stream.args.output_fields:
+                stream.output.write(output)
+            else:
+                stream.input.dump()
+        input = stream.input.read(read_size)
+        if input is None:
+            break
 
 def select(stream):
     input = None
     env = restricted_numpy_env()
-    exec stream.args.default_values in env
+    exec(stream.args.default_values, env)
     fields = stream.input.fields
     code = compile(stream.args.select, '<string>', 'eval')
     is_shutdown = comma.signal.is_shutdown()
     if stream.args.first_line:
         input = stream.input.read_from_line(stream.args.first_line)
     while not is_shutdown:
-        if input is not None: 
+        if input is not None:
             mask = eval(code, env, {f: input[f] for f in fields})
             stream.input.dump(mask=mask)
         input = stream.input.read()
-        if input is None: break
+        if input is None:
+            break
 
 def exit_if(stream):
     input = None
     env = restricted_numpy_env()
-    exec stream.args.default_values in env
+    exec(stream.args.default_values, env)
     fields = stream.input.fields
     code = compile(stream.args.exit_if, '<string>', 'eval')
     is_shutdown = comma.signal.is_shutdown()
-    if stream.args.first_line: input = stream.input.read_from_line(stream.args.first_line)
+    if stream.args.first_line:
+        input = stream.input.read_from_line(stream.args.first_line)
     while not is_shutdown:
         if input is not None:
             mask = eval(code, env, {f: input[f] for f in fields})
             if mask:
-                if not stream.args.with_error: sys.exit()
+                if not stream.args.with_error:
+                    sys.exit()
                 name = os.path.basename(sys.argv[0])
-                print >> sys.stderr, "{} error: {}".format(name, stream.args.with_error)
+                print("{} error: {}".format(name, stream.args.with_error), file=sys.stderr)
                 sys.exit(1)
             stream.input.dump()
         input = stream.input.read()
@@ -619,9 +630,9 @@ def main():
             evaluate(stream(args))
     except csv_eval_error as e:
         name = os.path.basename(sys.argv[0])
-        print >> sys.stderr, "{} error: {}".format(name, e)
+        print("{} error: {}".format(name, e), file=sys.stderr)
         sys.exit(1)
-    except StandardError as e:
+    except Exception as e:
         import traceback
         traceback.print_exc(file=sys.stderr)
         sys.exit(1)

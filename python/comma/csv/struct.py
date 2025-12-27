@@ -87,7 +87,7 @@ class struct(object):
         >>> outer.expand_shorthand('in')
         ('in/i', 'in/j')
         """
-        if isinstance(compressed_fields, basestring):
+        if isinstance(compressed_fields, str):
             compressed_fields = compressed_fields.split(',')
         expand = self.shorthand.get
         field_tuples = map(lambda name: expand(name) or (name,), compressed_fields)
@@ -107,7 +107,7 @@ class struct(object):
 
     def _assign( self, data, fields_map, convert ):
         functors = {}
-        for k, v in fields_map.iteritems():
+        for k, v in fields_map.items():
             if len( v ) > 0:
                 functors[k] = self._assign( getattr( data, k ), v, convert )
             else:
@@ -115,7 +115,7 @@ class struct(object):
                     setattr( data, key, value if convert is None else convert( value ) )
                 functors[k] = functor
         def apply_functors( record ):
-            for k, f in functors.iteritems(): f( record[k] )
+            for k, f in functors.items(): f( record[k] )
         return apply_functors
     
     def _nondefault_fields(self):
@@ -123,7 +123,7 @@ class struct(object):
         return tuple(map(lambda f: '' if f.startswith(default_name) else f, self.fields))
 
     def _fill_blanks(self, fields):
-        if isinstance(fields, basestring):
+        if isinstance(fields, str):
             fields = fields.split(',')
         ntypes = len(self.concise_types)
         if len(fields) > ntypes:
@@ -172,7 +172,7 @@ class struct(object):
                 continue
             fields_of_type = [name + '/' + field for field in type.fields]
             shorthand[name] = tuple(fields_of_type)
-            for subname, subfields in type.shorthand.iteritems():
+            for subname, subfields in type.shorthand.items():
                 xpath = name + '/' + subname
                 shorthand[xpath] = tuple(name + '/' + field for field in subfields)
         return shorthand
